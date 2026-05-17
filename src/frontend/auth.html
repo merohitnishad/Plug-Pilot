@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+  <title>PlugPilot — Connect Alexa</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { overflow: auto; }
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .proxy-box {
+      background: var(--bg-secondary, #f0f0f0);
+      border: 1px solid var(--border, #ddd);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .proxy-box code {
+      flex: 1;
+      font-size: 13px;
+      word-break: break-all;
+      font-family: monospace;
+    }
+    .copy-btn {
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border, #ccc);
+      background: var(--bg, #fff);
+      cursor: pointer;
+    }
+    .waiting {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted, #888);
+      font-size: 13px;
+      margin: 14px 0;
+    }
+    .steps-ol {
+      padding-left: 20px;
+      margin: 14px 0;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-title">PlugPilot — Connect Your Alexa Account</div>
+  </div>
+
+  <div class="auth-container" style="height: calc(100vh - 52px); margin-top: 0;">
+    <div class="auth-card">
+      <div class="auth-logo">🔋⚡</div>
+      <h1 class="auth-title">Connect Alexa</h1>
+
+      <!-- Step 1: email -->
+      <div class="step active" id="step-email">
+        <p class="auth-subtitle">
+          Sign in to your Amazon account to enable smart plug control
+          based on your Mac's battery level.
+        </p>
+
+        <div class="form-group">
+          <label for="input-email">Amazon Email</label>
+          <input type="email" id="input-email" placeholder="you@amazon.com" autocomplete="email">
+        </div>
+
+        <div id="email-alert"></div>
+
+        <button class="btn btn-primary btn-lg" id="btn-continue" style="width:100%; margin-top:16px;">
+          Continue
+        </button>
+      </div>
+
+      <!-- Step 2: open proxy URL in browser -->
+      <div class="step" id="step-proxy">
+        <p class="auth-subtitle">
+          A login page is ready. Open the link below in your browser, sign in to Amazon,
+          and the app will connect automatically.
+        </p>
+
+        <ol class="steps-ol">
+          <li>Click <strong>Open Login Page</strong></li>
+          <li>Sign in to Amazon (2FA and CAPTCHA are handled by the browser)</li>
+          <li>Return here — connection happens automatically</li>
+        </ol>
+
+        <div class="proxy-box">
+          <code id="proxy-url">http://localhost:3001</code>
+          <button class="copy-btn" id="btn-copy">Copy</button>
+        </div>
+
+        <button class="btn btn-primary btn-lg" id="btn-open" style="width:100%; margin-bottom:10px;">
+          Open Login Page
+        </button>
+
+        <div class="waiting">
+          <span class="spinner"></span>
+          <span>Waiting for login…</span>
+        </div>
+
+        <div id="proxy-alert"></div>
+
+        <button class="btn btn-secondary" id="btn-cancel" style="width:100%; margin-top:8px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    const api = window.electronAPI;
+
+    function showStep(id) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    // ─── Step 1 ────────────────────────────────────────────────────────────────
+
+    document.getElementById('btn-continue').addEventListener('click', async () => {
+      const email = document.getElementById('input-email').value.trim();
+      const alertEl = document.getElementById('email-alert');
+
+      if (!email) { showAlert(alertEl, 'Please enter your Amazon email.'); return; }
+
+      setBtnLoading('btn-continue', true, 'Starting…');
+      clearAlert(alertEl);
+
+      try {
+        const result = await api.startProxyLogin(email);
+        if (!result.success) {
+          showAlert(alertEl, result.error || 'Failed to start login.');
+          setBtnLoading('btn-continue', false, 'Continue');
+          return;
+        }
+        document.getElementById('proxy-url').textContent = result.proxyUrl || 'http://localhost:3001';
+        showStep('step-proxy');
+      } catch (err) {
+        showAlert(alertEl, 'Error: ' + err.message);
+        setBtnLoading('btn-continue', false, 'Continue');
+      }
+    });
+
+    document.getElementById('input-email').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-continue').click();
+    });
+
+    // ─── Step 2 ────────────────────────────────────────────────────────────────
+
+    document.getElementById('btn-open').addEventListener('click', () => {
+      api.openUrl(document.getElementById('proxy-url').textContent);
+    });
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('proxy-url').textContent).then(() => {
+        const btn = document.getElementById('btn-copy');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      });
+    });
+
+    document.getElementById('btn-cancel').addEventListener('click', async () => {
+      await api.stopProxyLogin();
+      showStep('step-email');
+      setBtnLoading('btn-continue', false, 'Continue');
+    });
+
+    // ─── Auth events from main ─────────────────────────────────────────────────
+
+    api.on('auth-success', () => {
+      showToast('Alexa connected!', 'success');
+    });
+
+    api.on('auth-error', (data) => {
+      showAlert(document.getElementById('proxy-alert'), (data && data.error) || 'Login failed. Please try again.');
+      showStep('step-email');
+      setBtnLoading('btn-continue', false, 'Continue');
+    });
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    function showAlert(el, msg) {
+      el.innerHTML = `<div class="alert alert-error" style="margin-top:12px"><span>✗</span><span>${escapeHtml(msg)}</span></div>`;
+    }
+    function clearAlert(el) { el.innerHTML = ''; }
+
+    function setBtnLoading(id, loading, label) {
+      const btn = document.getElementById(id);
+      btn.disabled = loading;
+      btn.innerHTML = loading ? `<span class="spinner"></span> ${label}` : label;
+    }
+
+    function showToast(msg, type = 'info') {
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.textContent = msg;
+      document.getElementById('toastContainer').appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

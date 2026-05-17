@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+
+# Build output
+electron/
+build/
+dist/
+out/
+release/
+coverage/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# macOS
+.DS_Store
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Electron Builder
+*.blockmap
+
+# Package managers
+.pnpm-store/
+.npm/
+
+# TypeScript
+*.tsbuildinfo
+
+# CodeGraph
+.codegraph/
+
+# Runtime / App data
+logs/
+sessions/
+cookies/
+
+# Testing
+playwright-report/
+test-results/
+
+# Misc
+Thumbs.db

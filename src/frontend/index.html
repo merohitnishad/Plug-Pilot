@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlugPilot</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 14px 16px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .bat-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .ring-wrap {
+      position: relative;
+      width: 52px; height: 52px;
+      flex-shrink: 0;
+    }
+    .ring-wrap svg { transform: rotate(-90deg); display: block; }
+    .ring-label {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .ring-pct  { font-size: 15px; font-weight: 800; color: var(--on-surface); line-height: 1; }
+    .ring-unit { font-size: 9px;  font-weight: 600; color: var(--on-muted);   line-height: 1; }
+
+    .bat-info { flex: 1; }
+    .bat-state { font-size: 14px; font-weight: 700; color: var(--on-surface); line-height: 1.2; }
+    .bat-sub   { font-size: 11px; color: var(--on-muted); margin-top: 3px; }
+
+    /* ── Action buttons ── */
+    .action-row { display: flex; gap: 8px; }
+    .action-btn {
+      flex: 1;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: var(--t);
+      -webkit-app-region: no-drag;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .action-btn:active { transform: scale(0.97); }
+    .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-monitor-start { background: var(--primary); color: #fff; }
+    .btn-monitor-start:hover:not(:disabled) { filter: brightness(1.1); }
+    .btn-monitor-stop  { background: var(--surface-2); color: var(--on-surface); border: 1.5px solid var(--border); }
+    .btn-monitor-stop:hover:not(:disabled)  { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+
+    .btn-plug-on  { background: var(--green-bg);  color: var(--green);  border: 1.5px solid var(--green); }
+    .btn-plug-on:hover:not(:disabled)  { background: var(--green);  color: #fff; }
+    .btn-plug-off { background: var(--orange-bg); color: var(--orange); border: 1.5px solid var(--orange); }
+    .btn-plug-off:hover:not(:disabled) { background: var(--orange); color: #fff; }
+
+    /* ── Settings ── */
+    .settings { flex: 1; overflow-y: auto; background: var(--bg); }
+
+    /* ── Footer ── */
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      gap: 8px;
+    }
+    .footer-appname {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--on-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .last-action {
+      flex: 1;
+      font-size: 11px;
+      color: var(--on-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .last-action strong { font-weight: 600; color: var(--on-surface); }
+    .footer-author {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--primary);
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .footer-author:hover { text-decoration: underline; }
+
+    /* ── Overflow menu ── */
+    .menu-wrap {
+      position: relative;
+      -webkit-app-region: no-drag;
+    }
+    .menu-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.16);
+      min-width: 200px;
+      z-index: 500;
+      overflow: hidden;
+      animation: menuIn 0.12s ease;
+    }
+    @keyframes menuIn {
+      from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .menu-dropdown.open { display: block; }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--on-surface);
+      cursor: pointer;
+      transition: background 0.1s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      -webkit-app-region: no-drag;
+    }
+    .menu-item:hover { background: var(--surface-2); }
+    .menu-item .menu-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+    .menu-item .menu-label { flex: 1; }
+    .menu-item .menu-badge {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--on-muted);
+      background: var(--surface-3);
+      padding: 1px 5px;
+      border-radius: 10px;
+    }
+    .menu-item.danger { color: var(--red); }
+    .menu-item.danger:hover { background: var(--red-bg); }
+
+    .menu-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 3px 0;
+    }
+    .menu-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--on-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 7px 14px 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="titlebar-brand">
+      <img src="app-icon.png" width="20" height="20" alt="" style="border-radius:5px;">
+      <span class="titlebar-title">PlugPilot</span>
+    </div>
+    <div class="titlebar-actions">
+      <button class="tb-btn" id="btn-theme" title="Toggle theme">☾</button>
+      <div class="menu-wrap">
+        <button class="tb-btn" id="btn-menu" title="Menu">⋯</button>
+        <div class="menu-dropdown" id="main-menu">
+
+          <button class="menu-item" id="menu-logs">
+            <span class="menu-icon">📋</span>
+            <span class="menu-label">Action History</span>
+          </button>
+          <button class="menu-item" id="menu-report">
+            <span class="menu-icon">🐛</span>
+            <span class="menu-label">Report a Bug</span>
+          </button>
+          <button class="menu-item" id="menu-feedback">
+            <span class="menu-icon">💬</span>
+            <span class="menu-label">Send Feedback</span>
+          </button>
+          <button class="menu-item" id="menu-website">
+            <span class="menu-icon">🌐</span>
+            <span class="menu-label">Visit Website</span>
+          </button>
+
+          <div class="menu-sep"></div>
+
+          <button class="menu-item" id="menu-about">
+            <span class="menu-icon">ℹ</span>
+            <span class="menu-label">About PlugPilot</span>
+          </button>
+
+          <div class="menu-sep"></div>
+
+          <button class="menu-item" id="menu-logout">
+            <span class="menu-icon">⇠</span>
+            <span class="menu-label">Logout &amp; Setup Again</span>
+          </button>
+          <button class="menu-item danger" id="menu-delete-data">
+            <span class="menu-icon">🗑</span>
+            <span class="menu-label">Delete All Data</span>
+          </button>
+          <button class="menu-item danger" id="menu-quit">
+            <span class="menu-icon">✕</span>
+            <span class="menu-label">Quit PlugPilot</span>
+          </button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="bat-row">
+      <div class="ring-wrap">
+        <svg width="52" height="52" viewBox="0 0 52 52">
+          <circle cx="26" cy="26" r="20" fill="none" stroke="var(--border)" stroke-width="5"/>
+          <circle cx="26" cy="26" r="20" fill="none"
+            id="ring-arc" stroke="#43A047" stroke-width="5" stroke-linecap="round"
+            stroke-dasharray="125.7" stroke-dashoffset="125.7"
+            style="transition: stroke-dashoffset 0.5s ease, stroke 0.3s ease;"/>
+        </svg>
+        <div class="ring-label">
+          <span class="ring-pct" id="bat-pct">--</span>
+          <span class="ring-unit">%</span>
+        </div>
+      </div>
+      <div class="bat-info">
+        <div class="bat-state" id="bat-state">Checking…</div>
+        <div class="bat-sub"  id="bat-sub">—</div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn btn-monitor-start" id="btn-monitor">▶ Start Monitor</button>
+      <button class="action-btn btn-plug-on"       id="btn-plug">⚡ Plug IN</button>
+    </div>
+  </div>
+
+  <!-- Settings — core rows only -->
+  <div class="settings">
+
+    <div class="row">
+      <div class="row-left">
+        <span class="row-label">Battery Range</span>
+        <span class="row-sub" id="val-range">— to —</span>
+      </div>
+      <div class="row-right">
+        <button class="btn btn-ghost btn-sm" id="btn-edit-range">Edit</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <span class="row-label">Smart Plug</span>
+        <span class="row-sub" id="val-device">Not selected</span>
+      </div>
+      <div class="row-right">
+        <button class="btn btn-ghost btn-sm" id="btn-edit-device">Edit</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <span class="row-label">Alexa</span>
+        <span class="row-sub" id="alexa-sub">Checking…</span>
+      </div>
+      <div class="row-right" id="alexa-chip"></div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <span class="row-label">Run at Startup</span>
+        <span class="row-sub">Launch automatically on login</span>
+      </div>
+      <div class="row-right">
+        <label class="toggle">
+          <input type="checkbox" id="toggle-startup">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar">
+    <span class="footer-appname">PlugPilot</span>
+    <span class="last-action" id="last-action">No actions yet</span>
+    <span class="footer-author" id="footer-author">Rohit Nishad</span>
+  </div>
+
+  <!-- Modal: Device -->
+  <div class="modal-overlay" id="modal-device">
+    <div class="modal">
+      <div class="modal-title">Change Smart Plug</div>
+      <div class="device-scroll" id="device-list-edit"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" style="flex:1" id="btn-cancel-device">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="btn-save-device">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Range -->
+  <div class="modal-overlay" id="modal-range">
+    <div class="modal">
+      <div class="modal-title">Edit Battery Range</div>
+
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <label style="font-size:12px;font-weight:600;color:var(--green);">⚡ Plug IN below</label>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="edit-low" min="1" max="98"
+              style="width:52px;text-align:center;font-weight:700;font-size:13px;">
+            <span style="font-size:11px;color:var(--on-muted);">%</span>
+          </div>
+        </div>
+        <input type="range" id="slider-low" min="1" max="98" step="1" style="width:100%;">
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <label style="font-size:12px;font-weight:600;color:var(--orange);">○ Plug OUT above</label>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="edit-high" min="2" max="99"
+              style="width:52px;text-align:center;font-weight:700;font-size:13px;">
+            <span style="font-size:11px;color:var(--on-muted);">%</span>
+          </div>
+        </div>
+        <input type="range" id="slider-high" min="2" max="99" step="1" style="width:100%;">
+      </div>
+
+      <div style="text-align:center;font-size:12px;color:var(--on-muted);margin-bottom:12px;">
+        Plug in at <strong id="preview-low" style="color:var(--green);">20%</strong>
+        &nbsp;·&nbsp;
+        Unplug at <strong id="preview-high" style="color:var(--orange);">80%</strong>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" style="flex:1" id="btn-cancel-range">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="btn-save-range">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

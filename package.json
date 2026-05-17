@@ -1,0 +1,101 @@
+{
+  "name": "plugpilot",
+  "version": "1.0.0",
+  "description": "macOS app to automate Alexa smart plug based on battery percentage",
+  "author": {
+    "name": "Rohit Nishad",
+    "url": "https://rohitnishad.com"
+  },
+  "homepage": "https://github.com/merohitnishad/Plug-Pilot",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/merohitnishad/Plug-Pilot.git"
+  },
+  "license": "MIT",
+  "os": [
+    "darwin"
+  ],
+  "engines": {
+    "node": "22.x"
+  },
+  "overrides": {
+    "cookie": ">=0.7.0",
+    "tar": ">=7.5.11"
+  },
+  "main": "electron/index.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "tsc && electron-builder",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dev": "ts-node src/index.ts",
+    "compile": "tsc",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
+  },
+  "dependencies": {
+    "alexa-remote2": "^4.1.1",
+    "better-sqlite3": "^12.10.0",
+    "electron-store": "^8.2.0",
+    "node-cron": "^3.0.3",
+    "node-notifier": "^10.0.1",
+    "systeminformation": "^5.21.20",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.11.5",
+    "@types/node-cron": "^3.0.11",
+    "@types/node-notifier": "^8.0.5",
+    "electron": "35.7.5",
+    "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.plugpilot.app",
+    "productName": "PlugPilot",
+    "copyright": "Copyright © 2025 Rohit Nishad",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "src/icons/icon.icns",
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "extraResources": [
+      {
+        "from": "src/launchagent/com.plugpilot.worker.plist",
+        "to": "launchagent/com.plugpilot.worker.plist"
+      },
+      {
+        "from": "electron/backend/worker.js",
+        "to": "backend/worker.js"
+      }
+    ],
+    "files": [
+      "electron/**/*",
+      "src/frontend/**/*",
+      "src/icons/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ]
+  }
+}

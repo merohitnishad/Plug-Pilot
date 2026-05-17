@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlugPilot Setup</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wizard-wrap">
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="titlebar-brand">
+      <img src="app-icon.png" width="20" height="20" alt="" style="border-radius:5px;">
+      <span class="titlebar-title">PlugPilot</span>
+    </div>
+    <div class="titlebar-actions">
+      <button class="tb-btn" id="wiz-theme">☾</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:50%"></div></div>
+
+  <div class="wizard-body">
+
+    <!-- ── Step 1: Connect ───────────────────────────────────────── -->
+    <div class="step active" id="step-connect">
+      <div class="wiz-heading">Connect Alexa</div>
+      <div class="wiz-sub">Select your Amazon region and sign in via browser.</div>
+
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:6px;">Amazon Region</label>
+        <div class="region-pills" id="region-pills">
+          <button class="region-pill active" data-value="us">🇺🇸 US</button>
+          <button class="region-pill" data-value="in">🇮🇳 India</button>
+          <button class="region-pill" data-value="uk">🇬🇧 UK</button>
+          <button class="region-pill" data-value="ca">🇨🇦 Canada</button>
+          <button class="region-pill" data-value="au">🇦🇺 Australia</button>
+          <button class="region-pill" data-value="de">🇩🇪 Germany</button>
+          <button class="region-pill" data-value="fr">🇫🇷 France</button>
+          <button class="region-pill" data-value="it">🇮🇹 Italy</button>
+          <button class="region-pill" data-value="es">🇪🇸 Spain</button>
+          <button class="region-pill" data-value="mx">🇲🇽 Mexico</button>
+          <button class="region-pill" data-value="br">🇧🇷 Brazil</button>
+          <button class="region-pill" data-value="jp">🇯🇵 Japan</button>
+        </div>
+      </div>
+
+      <div id="connect-alert" style="display:none;margin-bottom:10px;"></div>
+
+      <button class="btn btn-primary btn-full" id="btn-connect">Connect with Amazon</button>
+
+      <div id="connect-waiting" style="display:none;margin-top:12px;">
+        <div class="alert alert-info">
+          <span class="spinner spinner-primary"></span>
+          Waiting for browser login…
+        </div>
+        <button class="btn btn-ghost btn-full btn-sm" id="btn-cancel-login" style="margin-top:8px;">✕ Cancel &amp; Restart</button>
+      </div>
+
+      <div style="margin-top:auto;padding-top:12px;">
+        <div style="font-size:11px;color:var(--on-muted);line-height:1.5;">
+          Your browser will open Amazon's login page. Sign in, then return here — setup continues automatically.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Configure ─────────────────────────────────────── -->
+    <div class="step" id="step-configure">
+      <div class="wiz-heading">Configure Automation</div>
+      <div class="wiz-sub">Pick your smart plug and set the charging range.</div>
+
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label>Smart Plug Device</label>
+          <button class="btn btn-ghost btn-sm" id="btn-refresh" style="font-size:11px;height:24px;padding:0 8px;">↻ Refresh</button>
+        </div>
+        <div class="device-list" id="device-list">
+          <div class="device-list-empty">Scanning…</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label>Battery Range</label>
+          <span id="range-preview" style="font-size:11px;font-weight:600;color:var(--primary);">20% – 80%</span>
+        </div>
+        <div class="range-pair">
+          <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
+            <label style="font-size:10px;">Plug IN below</label>
+            <input type="number" id="inp-low" value="20" min="1" max="98" style="width:100%;">
+          </div>
+          <span style="margin-top:14px;">—</span>
+          <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
+            <label style="font-size:10px;">Plug OUT above</label>
+            <input type="number" id="inp-high" value="80" min="2" max="99" style="width:100%;">
+          </div>
+          <span style="margin-top:14px;font-size:11px;color:var(--on-muted);">%</span>
+        </div>
+      </div>
+
+      <div id="configure-alert" style="display:none;margin-bottom:10px;"></div>
+
+      <button class="btn btn-primary btn-full btn-lg" id="btn-finish">Start Monitoring</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="wizard.js"></script>
+</body>
+</html>

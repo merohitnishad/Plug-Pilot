@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About PlugPilot</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .about-body {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px 24px;
+      gap: 0;
+    }
+
+    /* App identity */
+    .app-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      display: block;
+      object-fit: cover;
+    }
+    .app-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--on-surface);
+      letter-spacing: -0.4px;
+      margin-bottom: 3px;
+    }
+    .app-version {
+      font-size: 12px;
+      color: var(--on-muted);
+      margin-bottom: 10px;
+    }
+    .app-desc {
+      font-size: 13px;
+      color: var(--on-muted);
+      text-align: center;
+      line-height: 1.6;
+      max-width: 320px;
+      margin-bottom: 20px;
+    }
+
+    /* Link buttons */
+    .about-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    /* Info cards */
+    .info-card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--on-muted); font-size: 12px; }
+    .info-value { font-weight: 500; color: var(--on-surface); font-size: 12px; }
+
+    /* Privacy box */
+    .privacy-card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--primary-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      font-size: 11.5px;
+      color: var(--on-muted);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    .privacy-card strong { color: var(--primary); font-weight: 600; }
+    .privacy-card code {
+      font-size: 10.5px;
+      background: var(--surface);
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+    }
+
+    /* Author */
+    .author-card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .author-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .author-name { font-size: 13px; font-weight: 600; color: var(--on-surface); }
+    .author-link { font-size: 11px; color: var(--primary); cursor: pointer; }
+    .author-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <span class="titlebar-title">About</span>
+    <div class="titlebar-actions">
+      <button class="tb-btn" id="btn-back" title="Back">←</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="about-body">
+
+    <!-- Identity -->
+    <img class="app-icon" src="app-icon@2x.png" width="80" height="80" alt="PlugPilot">
+    <div class="app-name">PlugPilot</div>
+    <div class="app-version">Version 1.0.0</div>
+    <div class="app-desc">
+      Keeps your MacBook battery healthy by automatically controlling your Alexa-connected smart plug based on battery thresholds.
+    </div>
+
+    <!-- Links -->
+    <div class="about-links">
+      <button class="btn btn-primary btn-sm" id="btn-website">Visit Website</button>
+      <button class="btn btn-ghost btn-sm" id="btn-github">GitHub</button>
+      <button class="btn btn-ghost btn-sm" id="btn-report">Report Bug</button>
+      <button class="btn btn-ghost btn-sm" id="btn-feedback">Feedback</button>
+    </div>
+
+    <!-- App info -->
+    <div class="info-card">
+      <div class="info-row">
+        <span class="info-label">Version</span>
+        <span class="info-value">1.0.0</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">License</span>
+        <span class="info-value" id="link-license" style="color:var(--primary);cursor:pointer;">MIT License</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Platform</span>
+        <span class="info-value">macOS 12+ · Apple Silicon &amp; Intel</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Open Source</span>
+        <span class="info-value" id="link-github" style="color:var(--primary);cursor:pointer;">github.com/merohitnishad/Plug-Pilot</span>
+      </div>
+    </div>
+
+    <!-- Privacy -->
+    <div class="privacy-card">
+      <strong>🔒 Privacy &amp; Security</strong><br>
+      Your Amazon password is <strong>never stored</strong>. Login is handled entirely in your browser.
+      Session cookies are encrypted with macOS Keychain-backed AES encryption (<code>safeStorage</code>)
+      and are never transmitted to any server other than Amazon.
+    </div>
+
+    <!-- Author -->
+    <div class="author-card">
+      <div class="author-avatar">R</div>
+      <div>
+        <div class="author-name">Rohit Nishad</div>
+        <div class="author-link" id="link-website">rohitnishad.com</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="about.js"></script>
+</body>
+</html>

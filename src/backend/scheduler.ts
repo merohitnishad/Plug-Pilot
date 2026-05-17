@@ -1,0 +1,172 @@
+'use strict';
+
+import cron from 'node-cron';
+import { getBatteryInfo } from './battery';
+import { sendCommand, sendSmartHomeAction } from './alexa';
+import { logAction } from './historydb';
+import logger from './logger';
+
+let cronTask: cron.ScheduledTask | null = null;
+let notifyFn: ((channel: string, data: any) => void) | null = null;
+let getStoreFn: (() => any) | null = null;
+let running = false;
+
+// In-memory plug state — set immediately when action is decided (before async Alexa call)
+// so concurrent checkAndAct calls see the updated state and don't double-send.
+// Initialized from store on start(); reset to null when monitor is re-enabled.
+let plugState: 'on' | 'off' | null = null;
+
+// Mutex: only one checkAndAct runs at a time
+let acting = false;
+
+export function start(getStore: () => any, notify: (channel: string, data: any) => void): void {
+  if (cronTask) {
+    cronTask.stop();
+    cronTask = null;
+  }
+
+  getStoreFn = getStore;
+  notifyFn = notify;
+  running = true;
+
+  // Seed in-memory state from store (null means "unknown — act on first check")
+  plugState = getStore().get('lastPlugState') ?? null;
+
+  logger.info('Starting battery scheduler (every 60 seconds)');
+
+  checkAndAct();
+
+  cronTask = cron.schedule('* * * * *', () => {
+    checkAndAct();
+  });
+
+  if (notifyFn) {
+    notifyFn('scheduler-status', { running: true });
+  }
+}
+
+export function stop(): void {
+  if (cronTask) {
+    cronTask.stop();
+    cronTask = null;
+  }
+  running = false;
+  plugState = null;
+  logger.info('Battery scheduler stopped');
+
+  if (notifyFn) {
+    notifyFn('scheduler-status', { running: false });
+  }
+}
+
+/** Call this after a manual plug action so the in-memory state stays in sync. */
+export function setPlugState(state: 'on' | 'off' | null): void {
+  plugState = state;
+}
+
+async function checkAndAct(): Promise<void> {
+  if (!getStoreFn) return;
+
+  // Prevent concurrent execution — skip if already acting
+  if (acting) {
+    logger.info('checkAndAct already in progress, skipping');
+    return;
+  }
+  acting = true;
+
+  try {
+    const store = getStoreFn();
+
+    if (!store.get('monitorEnabled')) {
+      logger.info('Monitor disabled, skipping check');
+      return;
+    }
+
+    const lowThreshold: number  = store.get('lowThreshold')  || 20;
+    const highThreshold: number = store.get('highThreshold') || 80;
+    const targetDeviceId: string | null = store.get('targetDeviceId');
+    const onCommand: string  = store.get('onCommand')  || 'turn on Smart Plug Mac';
+    const offCommand: string = store.get('offCommand') || 'turn off Smart Plug Mac';
+
+    const info = await getBatteryInfo();
+    const { percent, isCharging } = info;
+
+    logger.info(`Battery check: ${percent}% | charging: ${isCharging} | plugState: ${plugState}`);
+
+    if (notifyFn) {
+      notifyFn('battery-update', { percent, isCharging });
+    }
+
+    // Determine required action based on battery vs thresholds
+    let action: 'turnOn' | 'turnOff' | null = null;
+    let commandToSend: string | null = null;
+    let newPlugState: 'on' | 'off' = 'off';
+
+    if (percent <= lowThreshold && plugState !== 'on') {
+      action = 'turnOn';
+      commandToSend = onCommand;
+      newPlugState = 'on';
+      logger.info(`Battery at ${percent}% <= ${lowThreshold}%. Turning on charger.`);
+    } else if (percent >= highThreshold && plugState !== 'off') {
+      action = 'turnOff';
+      commandToSend = offCommand;
+      newPlugState = 'off';
+      logger.info(`Battery at ${percent}% >= ${highThreshold}%. Turning off charger.`);
+    }
+
+    if (!action && !commandToSend) return;
+
+    // Lock in-memory state immediately — before the async call — so any
+    // concurrent or back-to-back check sees the new state and won't re-fire.
+    plugState = newPlugState;
+
+    let result;
+    let displayCommand = commandToSend;
+
+    if (targetDeviceId && action) {
+      result = await sendSmartHomeAction(targetDeviceId, action, getStoreFn);
+      displayCommand = action === 'turnOn' ? 'Plug IN' : 'Plug OUT';
+    } else if (commandToSend) {
+      result = await sendCommand(commandToSend, getStoreFn);
+    } else {
+      return;
+    }
+
+    if (result.success) {
+      // Persist to store so the state survives an app restart
+      store.set('lastPlugState', newPlugState);
+      store.set('lastCommand', displayCommand);
+      store.set('lastCommandTime', new Date().toISOString());
+
+      logger.info(`Action executed: "${displayCommand}"`);
+      logAction({ action: displayCommand!, triggered: 'monitor', battery: percent, success: true });
+
+      if (notifyFn) {
+        notifyFn('command-executed', {
+          command: displayCommand,
+          time: new Date().toISOString(),
+          batteryPercent: percent,
+          plugState: newPlugState,
+        });
+      }
+    } else {
+      // Roll back in-memory state so the next check retries
+      plugState = newPlugState === 'on' ? 'off' : 'on';
+      logger.error(`Action failed: ${result.error}`);
+      logAction({ action: displayCommand!, triggered: 'monitor', battery: percent, success: false, note: result.error });
+    }
+  } catch (err: any) {
+    logger.error('Scheduler check error:', err.message);
+    // Don't touch plugState on unexpected error — let next cycle retry
+  } finally {
+    acting = false;
+  }
+}
+
+export function isRunning(): boolean {
+  return running && cronTask !== null;
+}
+
+export async function manualCheck(): Promise<void> {
+  return checkAndAct();
+}

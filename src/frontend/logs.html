@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlugPilot — History</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    .log-body {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    /* ── Table ── */
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .log-table thead {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 10;
+    }
+    .log-table th {
+      padding: 7px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--on-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .log-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--on-surface);
+    }
+    .log-table tbody tr:hover { background: var(--surface-2); }
+    .log-table tbody tr:last-child td { border-bottom: none; }
+
+    .col-time   { width: 140px; color: var(--on-muted); font-size: 11px; white-space: nowrap; }
+    .col-action { font-weight: 500; }
+    .col-trig   { width: 80px; }
+    .col-bat    { width: 60px; text-align: right; }
+    .col-status { width: 70px; text-align: center; }
+
+    .badge-monitor { background: var(--primary-bg); color: var(--primary); padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .badge-manual  { background: var(--surface-3); color: var(--on-muted); padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+
+    .status-ok  { color: var(--green); font-size: 13px; }
+    .status-err { color: var(--red);   font-size: 13px; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 48px 24px;
+      color: var(--on-muted);
+      font-size: 13px;
+      text-align: center;
+    }
+    .empty-icon { font-size: 36px; }
+
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .log-count { font-size: 11px; color: var(--on-muted); }
+  </style>
+</head>
+<body>
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <span class="titlebar-title">Action History</span>
+    <div class="titlebar-actions">
+      <button class="tb-btn" id="btn-back" title="Back">←</button>
+    </div>
+  </div>
+
+  <!-- Log body -->
+  <div class="log-body" id="log-body">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📋</div>
+      <div>No actions logged yet</div>
+      <div style="font-size:11px;">Plug ON/OFF events will appear here</div>
+    </div>
+    <table class="log-table" id="log-table" style="display:none;">
+      <thead>
+        <tr>
+          <th class="col-time">Time</th>
+          <th class="col-action">Action</th>
+          <th class="col-trig">Source</th>
+          <th class="col-bat">Battery</th>
+          <th class="col-status">Status</th>
+        </tr>
+      </thead>
+      <tbody id="log-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar">
+    <span class="log-count" id="log-count">0 entries</span>
+    <button class="btn btn-danger btn-sm" id="btn-clear">Clear History</button>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="logs.js"></script>
+</body>
+</html>
