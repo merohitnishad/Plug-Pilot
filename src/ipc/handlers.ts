@@ -603,7 +603,18 @@ export function register(ipcMain: IpcMain, getStoreFn: () => any, app: App, win:
 
   const store = getStore();
   if (store.get('monitorEnabled')) {
-    setTimeout(() => {
+    setTimeout(async () => {
+      logger.info('Performing startup auth and state check...');
+      
+      // 1. Proactively validate session
+      const auth = await alexa.validateSession(getSecureStore);
+      if (!auth.success) {
+        logger.warn('Startup auth validation failed:', auth.error);
+        sendNotification('PlugPilot', 'Alexa session expired. Please open the app to re-authenticate.');
+        // We still start the scheduler; it will handle errors gracefully during checks
+      }
+
+      // 2. Start scheduler (it will handle its own syncDeviceState)
       scheduler.start(getSecureStore, notifyWindows);
     }, 2000);
   }
