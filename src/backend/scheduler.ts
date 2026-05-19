@@ -79,10 +79,10 @@ async function syncDeviceState(getStore: () => any): Promise<void> {
   
   try {
     const res = await getSmartHomeDeviceState(targetDeviceId, getStore);
-    if (res.success && res.state) {
-      logger.info(`Synced real plug state: ${res.state}`);
-      plugState = res.state;
-      getStore().set('lastPlugState', res.state);
+    if (res.success && res.result?.state) {
+      logger.info(`Synced real plug state: ${res.result.state}`);
+      plugState = res.result.state;
+      getStore().set('lastPlugState', res.result.state);
     }
   } catch (err: any) {
     logger.warn('Failed to sync device state on start:', err.message);
