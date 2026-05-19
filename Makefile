@@ -26,8 +26,8 @@ build: compile
 		echo "  ✓ x64 signed"; \
 	fi
 
-## Reset everything: clear session, logs, config — then start fresh
-reset: reset-session reset-logs
+## Reset everything: clear session, logs, config, and history — then start fresh
+reset: reset-session reset-logs reset-history
 	@echo "App reset complete. Run 'make start' to launch."
 
 ## Clear Alexa session and config (forces re-auth on next start)
@@ -36,6 +36,12 @@ reset-session:
 	@rm -f $(ELECTRON_STORE)/plugpilot-config.json
 	@rm -f $(APP_SUPPORT)/config.json
 	@echo "Session cleared."
+
+## Clear action history database
+reset-history:
+	@echo "Clearing action history..."
+	@rm -f $(APP_SUPPORT)/history.db
+	@echo "History cleared."
 
 ## Clear all logs
 reset-logs:
