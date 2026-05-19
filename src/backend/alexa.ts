@@ -2,6 +2,7 @@
 
 import * as net from 'net';
 import logger from './logger';
+import { AlexaErrorCode, AlexaResponse } from './types';
 
 const Alexa = require('alexa-remote2');
 
@@ -22,6 +23,20 @@ function findAvailablePort(startPort: number): Promise<number> {
       server2.on('error', reject);
     });
   });
+}
+
+function getErrorCode(err: any): AlexaErrorCode {
+  const msg = (err?.message || String(err)).toLowerCase();
+  if (msg.includes('auth') || msg.includes('401') || msg.includes('cookie') || msg.includes('expired')) {
+    return AlexaErrorCode.AUTH_EXPIRED;
+  }
+  if (msg.includes('enotfound') || msg.includes('etimedout') || msg.includes('econnrefused') || msg.includes('network')) {
+    return AlexaErrorCode.NETWORK_ERROR;
+  }
+  if (msg.includes('offline') || msg.includes('endpoint_unreachable')) {
+    return AlexaErrorCode.DEVICE_OFFLINE;
+  }
+  return AlexaErrorCode.ACTION_FAILED;
 }
 
 let alexaInstance: any = null;
@@ -334,7 +349,7 @@ export async function sendCommand(
   command: string,
   getStore: () => any,
   retries = 3
-): Promise<{ success: boolean; result?: any; error?: string }> {
+): Promise<AlexaResponse<{ method: string }>> {
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -348,7 +363,8 @@ export async function sendCommand(
       lastError = err;
       logger.warn(`Command attempt ${attempt} failed: ${err.message}`);
 
-      if (err.message && (err.message.includes('auth') || err.message.includes('401') || err.message.includes('cookie') || err.message.includes('expired'))) {
+      const errorCode = getErrorCode(err);
+      if (errorCode === AlexaErrorCode.AUTH_EXPIRED) {
         alexaInstance = null;
         isInitialized = false;
       }
@@ -358,7 +374,7 @@ export async function sendCommand(
   }
 
   logger.error(`Command failed after ${retries} attempts: ${lastError!.message}`);
-  return { success: false, error: lastError!.message };
+  return { success: false, error: lastError!.message, errorCode: getErrorCode(lastError) };
 }
 
 export async function sendSmartHomeAction(
@@ -366,7 +382,7 @@ export async function sendSmartHomeAction(
   action: string,
   getStore: () => any,
   retries = 3
-): Promise<{ success: boolean; result?: any; error?: string }> {
+): Promise<AlexaResponse> {
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -392,7 +408,8 @@ export async function sendSmartHomeAction(
       lastError = err;
       logger.warn(`Action attempt ${attempt} failed: ${err.message}`);
 
-      if (err.message && (err.message.includes('auth') || err.message.includes('401') || err.message.includes('cookie') || err.message.includes('expired'))) {
+      const errorCode = getErrorCode(err);
+      if (errorCode === AlexaErrorCode.AUTH_EXPIRED) {
         alexaInstance = null;
         isInitialized = false;
       }
@@ -402,26 +419,30 @@ export async function sendSmartHomeAction(
   }
 
   logger.error(`Action failed after ${retries} attempts: ${lastError!.message}`);
-  return { success: false, error: lastError!.message };
+  return { success: false, error: lastError!.message, errorCode: getErrorCode(lastError) };
 }
 
 export async function getSmartHomeDeviceState(
   entityId: string,
   getStore: () => any
-): Promise<{ success: boolean; state?: 'on' | 'off'; error?: string }> {
+): Promise<AlexaResponse<{ state: 'on' | 'off' }>> {
   try {
     const alexa = await getAlexa(getStore);
     return new Promise((resolve) => {
       alexa.querySmarthomeDevices([entityId], (err: any, res: any) => {
         if (err) {
-          resolve({ success: false, error: err.message || String(err) });
+          resolve({ 
+            success: false, 
+            error: err.message || String(err),
+            errorCode: getErrorCode(err)
+          });
           return;
         }
 
         // Response structure: { deviceStates: [ { entityId: '...', capabilityStates: [ '{"namespace":"...","name":"...","value":"..."}' ] } ] }
         const deviceState = res?.deviceStates?.find((s: any) => s.entityId === entityId);
         if (!deviceState || !deviceState.capabilityStates) {
-          resolve({ success: false, error: 'Device state not found or incomplete' });
+          resolve({ success: false, error: 'Device state not found or incomplete', errorCode: AlexaErrorCode.DEVICE_OFFLINE });
           return;
         }
 
@@ -439,14 +460,14 @@ export async function getSmartHomeDeviceState(
         }
 
         if (state) {
-          resolve({ success: true, state });
+          resolve({ success: true, result: { state } });
         } else {
-          resolve({ success: false, error: 'Power state capability not found' });
+          resolve({ success: false, error: 'Power state capability not found', errorCode: AlexaErrorCode.ACTION_FAILED });
         }
       });
     });
   } catch (err: any) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, errorCode: getErrorCode(err) };
   }
 }
 

@@ -1,10 +1,15 @@
 'use strict';
 
 import cron from 'node-cron';
+import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
 import { getBatteryInfo } from './battery';
 import { sendCommand, sendSmartHomeAction, getSmartHomeDeviceState } from './alexa';
 import { logAction } from './historydb';
 import logger from './logger';
+
+const LOCK_FILE = path.join(os.homedir(), 'Library', 'Application Support', 'PlugPilot', 'acting.lock');
 
 let cronTask: cron.ScheduledTask | null = null;
 let notifyFn: ((channel: string, data: any) => void) | null = null;
@@ -18,6 +23,7 @@ let plugState: 'on' | 'off' | null = null;
 
 // Mutex: only one checkAndAct runs at a time
 let acting = false;
+let checkCount = 0;
 
 export function start(getStore: () => any, notify: (channel: string, data: any) => void): void {
   if (cronTask) {
@@ -92,6 +98,8 @@ async function checkAndAct(): Promise<void> {
     return;
   }
   acting = true;
+  checkCount++;
+  try { fs.writeFileSync(LOCK_FILE, process.pid.toString()); } catch (e) {}
 
   try {
     const store = getStoreFn();
@@ -116,6 +124,25 @@ async function checkAndAct(): Promise<void> {
       notifyFn('battery-update', { percent, isCharging });
     }
 
+    // ─── Reconciliation Loop ──────────────────────────────────────────────────
+    // Every 5 cycles (approx 5 mins), verify real state regardless of battery.
+    // This handles manual overrides done via Alexa app or voice.
+    const shouldReconcile = checkCount % 5 === 0;
+    if (shouldReconcile && targetDeviceId) {
+      logger.info('Performing periodic state reconciliation...');
+      const res = await getSmartHomeDeviceState(targetDeviceId, getStoreFn);
+      if (res.success && res.result?.state) {
+        if (plugState !== res.result.state) {
+          logger.info(`Reconciliation: Local state (${plugState}) out of sync with Alexa (${res.result.state}). Updating.`);
+          plugState = res.result.state;
+          store.set('lastPlugState', res.result.state);
+        }
+        if (notifyFn) {
+          notifyFn('device-status-update', { state: res.result.state });
+        }
+      }
+    }
+
     // Determine required action based on battery vs thresholds
     let action: 'turnOn' | 'turnOff' | null = null;
     let commandToSend: string | null = null;
@@ -125,10 +152,11 @@ async function checkAndAct(): Promise<void> {
       // Re-verify actual state before acting to be "intelligent"
       if (targetDeviceId) {
         const res = await getSmartHomeDeviceState(targetDeviceId, getStoreFn);
-        if (res.success && res.state === 'on') {
+        if (res.success && res.result?.state === 'on') {
           logger.info('Plug is already ON according to Alexa, syncing and skipping action.');
           plugState = 'on';
           store.set('lastPlugState', 'on');
+          if (notifyFn) notifyFn('device-status-update', { state: 'on' });
           return;
         }
       }
@@ -140,10 +168,11 @@ async function checkAndAct(): Promise<void> {
       // Re-verify actual state before acting
       if (targetDeviceId) {
         const res = await getSmartHomeDeviceState(targetDeviceId, getStoreFn);
-        if (res.success && res.state === 'off') {
+        if (res.success && res.result?.state === 'off') {
           logger.info('Plug is already OFF according to Alexa, syncing and skipping action.');
           plugState = 'off';
           store.set('lastPlugState', 'off');
+          if (notifyFn) notifyFn('device-status-update', { state: 'off' });
           return;
         }
       }
@@ -199,6 +228,7 @@ async function checkAndAct(): Promise<void> {
     // Don't touch plugState on unexpected error — let next cycle retry
   } finally {
     acting = false;
+    try { if (fs.existsSync(LOCK_FILE)) fs.unlinkSync(LOCK_FILE); } catch (e) {}
   }
 }
 

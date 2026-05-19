@@ -42,6 +42,12 @@ async function init() {
   wireEvents();
   wireIpc();
   setInterval(refreshBattery, 20000);
+  
+  // Initial device status check
+  if (S.targetDeviceId) {
+    refreshDeviceStatus();
+    setInterval(refreshDeviceStatus, 300000); // every 5 mins
+  }
 }
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -76,6 +82,32 @@ function sanitizeCommand(cmd) {
 async function refreshBattery() {
   const r = await api.getBattery().catch(() => null);
   if (r && r.success) updateBatteryUI(r.percent, r.isCharging);
+}
+
+async function refreshDeviceStatus() {
+  if (!S.targetDeviceId) return;
+  const r = await api.getSmartHomeDeviceState(S.targetDeviceId);
+  if (r.success && r.result?.state) {
+    updateDeviceStatusUI(r.result.state);
+  } else {
+    updateDeviceStatusUI(null);
+  }
+}
+
+function updateDeviceStatusUI(state) {
+  const dot = el('device-status-dot');
+  if (!dot) return;
+  dot.style.display = 'inline-block';
+  if (state === 'on') {
+    dot.className = 'dot dot-green';
+    dot.title = 'Smart plug is currently ON';
+  } else if (state === 'off') {
+    dot.className = 'dot dot-red';
+    dot.title = 'Smart plug is currently OFF';
+  } else {
+    dot.className = 'dot dot-grey';
+    dot.title = 'Smart plug status unknown';
+  }
 }
 
 function updateBatteryUI(pct, charging) {
@@ -427,6 +459,14 @@ function updateEditPreview() {
 function wireIpc() {
   api.on('battery-update', d => {
     if (d && typeof d.percent === 'number') updateBatteryUI(d.percent, d.isCharging);
+  });
+
+  api.on('device-status-update', d => {
+    if (d && d.state) {
+      updateDeviceStatusUI(d.state);
+      S.lastPlugState = d.state;
+      renderPlugBtn(d.state);
+    }
   });
 
   api.on('command-executed', d => {

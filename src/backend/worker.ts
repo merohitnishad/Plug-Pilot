@@ -18,6 +18,7 @@ import si from 'systeminformation';
 const APP_SUPPORT = path.join(os.homedir(), 'Library', 'Application Support', 'PlugPilot');
 const LOG_DIR = path.join(APP_SUPPORT, 'logs');
 const CONFIG_FILE = path.join(APP_SUPPORT, 'config.json');
+const LOCK_FILE = path.join(APP_SUPPORT, 'acting.lock');
 
 const ELECTRON_STORE_FILE = path.join(
   os.homedir(), 'Library', 'Application Support', 'plugpilot',
@@ -216,7 +217,8 @@ async function sendSmartHomeAction(entityId: string, action: string, config: Wor
       return true;
     } catch (err: any) {
       logger.warn(`Attempt ${attempt} failed: ${err.message}`);
-      if (err.message.includes('auth') || err.message.includes('401')) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes('auth') || msg.includes('401') || msg.includes('cookie') || msg.includes('expired')) {
         alexaInstance = null;
         alexaInitialized = false;
       }
@@ -285,7 +287,8 @@ async function sendAlexaCommand(command: string, config: WorkerConfig, retries =
       return true;
     } catch (err: any) {
       logger.warn(`Attempt ${attempt} failed: ${err.message}`);
-      if (err.message.includes('auth') || err.message.includes('401')) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes('auth') || msg.includes('401') || msg.includes('cookie') || msg.includes('expired')) {
         alexaInstance = null;
         alexaInitialized = false;
       }
@@ -320,6 +323,12 @@ function sleep(ms: number): Promise<void> {
 
 async function main(): Promise<void> {
   logger.info('=== PlugPilot Worker Starting ===');
+
+  if (fs.existsSync(LOCK_FILE)) {
+    logger.info('Main app is currently acting (lock file exists). Skipping worker run.');
+    process.exit(0);
+    return;
+  }
 
   const config = readConfig();
 
