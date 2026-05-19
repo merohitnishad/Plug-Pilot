@@ -1,8 +1,9 @@
 'use strict';
 
-import { app, BrowserWindow, ipcMain, nativeTheme, Menu, Tray, shell, safeStorage, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, Menu, Tray, shell, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 
 // ─── macOS only ───────────────────────────────────────────────────────────────
 if (process.platform !== 'darwin') {
@@ -323,22 +324,34 @@ app.on('window-all-closed', () => {
 
 export { getStore };
 
-// ─── Safe Storage helpers (encrypt/decrypt Alexa cookies) ─────────────────────
+// ─── Local Encryption helpers (avoids macOS keychain prompts) ────────────────
+
+const ENCRYPTION_KEY = Buffer.from('4f762635a9f24e3c8b6d1f9a0c3e7b5d6f8a2c4e1b9d3f7a0c8e6b4d2f0a1c3e', 'hex'); 
+const IV_LENGTH = 16;
 
 export function encryptValue(raw: string): string {
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.encryptString(raw).toString('base64');
+  try {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let encrypted = cipher.update(raw, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
+  } catch (e) {
+    return raw;
   }
-  return raw; // fallback: plaintext (dev mode / unsupported platform)
 }
 
 export function decryptValue(stored: string): string {
-  if (safeStorage.isEncryptionAvailable()) {
-    try {
-      return safeStorage.decryptString(Buffer.from(stored, 'base64'));
-    } catch {
-      return stored; // already plaintext (migrating from old version)
-    }
+  try {
+    if (!stored || !stored.includes(':')) return stored; 
+    const textParts = stored.split(':');
+    const iv = Buffer.from(textParts.shift()!, 'hex');
+    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText, undefined, 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (e) {
+    return stored;
   }
-  return stored;
 }

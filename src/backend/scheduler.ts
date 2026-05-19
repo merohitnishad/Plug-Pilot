@@ -2,7 +2,7 @@
 
 import cron from 'node-cron';
 import { getBatteryInfo } from './battery';
-import { sendCommand, sendSmartHomeAction } from './alexa';
+import { sendCommand, sendSmartHomeAction, getSmartHomeDeviceState } from './alexa';
 import { logAction } from './historydb';
 import logger from './logger';
 
@@ -34,7 +34,10 @@ export function start(getStore: () => any, notify: (channel: string, data: any) 
 
   logger.info('Starting battery scheduler (every 60 seconds)');
 
-  checkAndAct();
+  // Try to sync real state immediately when monitor starts
+  syncDeviceState(getStore).then(() => {
+    checkAndAct();
+  });
 
   cronTask = cron.schedule('* * * * *', () => {
     checkAndAct();
@@ -62,6 +65,22 @@ export function stop(): void {
 /** Call this after a manual plug action so the in-memory state stays in sync. */
 export function setPlugState(state: 'on' | 'off' | null): void {
   plugState = state;
+}
+
+async function syncDeviceState(getStore: () => any): Promise<void> {
+  const targetDeviceId = getStore().get('targetDeviceId');
+  if (!targetDeviceId) return;
+  
+  try {
+    const res = await getSmartHomeDeviceState(targetDeviceId, getStore);
+    if (res.success && res.state) {
+      logger.info(`Synced real plug state: ${res.state}`);
+      plugState = res.state;
+      getStore().set('lastPlugState', res.state);
+    }
+  } catch (err: any) {
+    logger.warn('Failed to sync device state on start:', err.message);
+  }
 }
 
 async function checkAndAct(): Promise<void> {
@@ -103,11 +122,31 @@ async function checkAndAct(): Promise<void> {
     let newPlugState: 'on' | 'off' = 'off';
 
     if (percent <= lowThreshold && plugState !== 'on') {
+      // Re-verify actual state before acting to be "intelligent"
+      if (targetDeviceId) {
+        const res = await getSmartHomeDeviceState(targetDeviceId, getStoreFn);
+        if (res.success && res.state === 'on') {
+          logger.info('Plug is already ON according to Alexa, syncing and skipping action.');
+          plugState = 'on';
+          store.set('lastPlugState', 'on');
+          return;
+        }
+      }
       action = 'turnOn';
       commandToSend = onCommand;
       newPlugState = 'on';
       logger.info(`Battery at ${percent}% <= ${lowThreshold}%. Turning on charger.`);
     } else if (percent >= highThreshold && plugState !== 'off') {
+      // Re-verify actual state before acting
+      if (targetDeviceId) {
+        const res = await getSmartHomeDeviceState(targetDeviceId, getStoreFn);
+        if (res.success && res.state === 'off') {
+          logger.info('Plug is already OFF according to Alexa, syncing and skipping action.');
+          plugState = 'off';
+          store.set('lastPlugState', 'off');
+          return;
+        }
+      }
       action = 'turnOff';
       commandToSend = offCommand;
       newPlugState = 'off';

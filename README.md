@@ -79,7 +79,7 @@ The app hides to your menu bar. That's it.
 | What               | How                                                             |
 | ------------------ | --------------------------------------------------------------- |
 | Amazon password    | Never stored — your browser handles login                       |
-| Session cookies    | Encrypted with Electron `safeStorage` (OS keychain-backed AES)  |
+| Session cookies    | Encrypted with internal AES-256 (no keychain prompt)          |
 | External URLs      | `open-url` IPC validates `http`/`https` only, nothing else      |
 | Renderer isolation | `sandbox: true`, `contextIsolation: true`, no `nodeIntegration` |
 

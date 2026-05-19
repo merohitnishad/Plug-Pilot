@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Devices
   getAlexaDevices: () => ipcRenderer.invoke('get-alexa-devices'),
   getSmartHomeDevices: () => ipcRenderer.invoke('get-smart-home-devices'),
+  getSmartHomeDeviceState: (entityId: string) => ipcRenderer.invoke('get-smart-home-device-state', entityId),
   sendSmartHomeAction: (entityId: string, action: string) => ipcRenderer.invoke('send-smart-home-action', entityId, action),
   debugSmartHome: () => ipcRenderer.invoke('debug-smart-home'),
 

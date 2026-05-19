@@ -14,7 +14,7 @@
 | What            | How                                                                |
 | --------------- | ------------------------------------------------------------------ |
 | Amazon password | Never stored — browser handles login via proxy                     |
-| Session cookies | Encrypted with Electron `safeStorage` (OS keychain-backed AES-256) |
+| Session cookies | Encrypted with internal AES-256 (no keychain prompt) |
 | Cookie data     | Never printed in logs — only `.message` from errors is logged      |
 | IPC responses   | No raw cookies or tokens are ever sent to the renderer process     |
 

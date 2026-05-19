@@ -10,10 +10,5 @@
     <!-- Network access for Alexa API -->
     <key>com.apple.security.network.client</key>
     <true/>
-    <!-- Required for safeStorage / keychain access -->
-    <key>com.apple.security.keychain-access-groups</key>
-    <array>
-        <string>$(AppIdentifierPrefix)com.plugpilot.app</string>
-    </array>
 </dict>
 </plist>

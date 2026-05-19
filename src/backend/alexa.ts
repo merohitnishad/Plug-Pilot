@@ -405,6 +405,51 @@ export async function sendSmartHomeAction(
   return { success: false, error: lastError!.message };
 }
 
+export async function getSmartHomeDeviceState(
+  entityId: string,
+  getStore: () => any
+): Promise<{ success: boolean; state?: 'on' | 'off'; error?: string }> {
+  try {
+    const alexa = await getAlexa(getStore);
+    return new Promise((resolve) => {
+      alexa.querySmarthomeDevices([entityId], (err: any, res: any) => {
+        if (err) {
+          resolve({ success: false, error: err.message || String(err) });
+          return;
+        }
+
+        // Response structure: { deviceStates: [ { entityId: '...', capabilityStates: [ '{"namespace":"...","name":"...","value":"..."}' ] } ] }
+        const deviceState = res?.deviceStates?.find((s: any) => s.entityId === entityId);
+        if (!deviceState || !deviceState.capabilityStates) {
+          resolve({ success: false, error: 'Device state not found or incomplete' });
+          return;
+        }
+
+        let state: 'on' | 'off' | undefined;
+        for (const capStr of deviceState.capabilityStates) {
+          try {
+            const cap = JSON.parse(capStr);
+            if (cap.namespace === 'Alexa.PowerController' && cap.name === 'powerState') {
+              state = cap.value === 'ON' ? 'on' : 'off';
+              break;
+            }
+          } catch (e) {
+            // Ignore parse errors for individual capability strings
+          }
+        }
+
+        if (state) {
+          resolve({ success: true, state });
+        } else {
+          resolve({ success: false, error: 'Power state capability not found' });
+        }
+      });
+    });
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export function resetInstance(): void {
   alexaInstance = null;
   isInitialized = false;

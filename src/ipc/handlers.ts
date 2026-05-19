@@ -399,6 +399,14 @@ export function register(ipcMain: IpcMain, getStoreFn: () => any, app: App, win:
     }
   });
 
+  ipcMain.handle('get-smart-home-device-state', async (_event: any, entityId: string) => {
+    try {
+      return await alexa.getSmartHomeDeviceState(entityId, getSecureStore);
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
   // ─── Commands ────────────────────────────────────────────────────────────────
 
   ipcMain.handle('send-alexa-command', async (_event: any, command: string) => {

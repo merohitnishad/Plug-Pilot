@@ -226,6 +226,33 @@ async function sendSmartHomeAction(entityId: string, action: string, config: Wor
   return false;
 }
 
+async function getSmartHomeDeviceState(entityId: string, config: WorkerConfig): Promise<'on' | 'off' | null> {
+  try {
+    const alexa = await getAlexaInstance(config);
+    const res: any = await new Promise((resolve, reject) => {
+      alexa.querySmarthomeDevices([entityId], (err: any, res: any) => {
+        if (err) { reject(err); return; }
+        resolve(res);
+      });
+    });
+
+    const deviceState = res?.deviceStates?.find((s: any) => s.entityId === entityId);
+    if (!deviceState || !deviceState.capabilityStates) return null;
+
+    for (const capStr of deviceState.capabilityStates) {
+      try {
+        const cap = JSON.parse(capStr);
+        if (cap.namespace === 'Alexa.PowerController' && cap.name === 'powerState') {
+          return cap.value === 'ON' ? 'on' : 'off';
+        }
+      } catch (e) {}
+    }
+  } catch (err: any) {
+    logger.warn(`Failed to get device state: ${err.message}`);
+  }
+  return null;
+}
+
 async function sendAlexaCommand(command: string, config: WorkerConfig, retries = 3): Promise<boolean> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -320,11 +347,31 @@ async function main(): Promise<void> {
     let newPlugState = config.lastPlugState;
 
     if (percent <= config.lowThreshold && config.lastPlugState !== 'on') {
+      // Intelligent check: verify real state before acting
+      if (config.targetDeviceId) {
+        const realState = await getSmartHomeDeviceState(config.targetDeviceId, config);
+        if (realState === 'on') {
+          logger.info('Plug is already ON according to Alexa, skipping and syncing.');
+          writeConfig({ lastPlugState: 'on' });
+          process.exit(0);
+          return;
+        }
+      }
       commandToSend = config.onCommand;
       action = 'turnOn';
       newPlugState = 'on';
       logger.info(`Battery ${percent}% <= ${config.lowThreshold}% → Turning ON charger`);
     } else if (percent >= config.highThreshold && config.lastPlugState !== 'off') {
+      // Intelligent check: verify real state before acting
+      if (config.targetDeviceId) {
+        const realState = await getSmartHomeDeviceState(config.targetDeviceId, config);
+        if (realState === 'off') {
+          logger.info('Plug is already OFF according to Alexa, skipping and syncing.');
+          writeConfig({ lastPlugState: 'off' });
+          process.exit(0);
+          return;
+        }
+      }
       commandToSend = config.offCommand;
       action = 'turnOff';
       newPlugState = 'off';

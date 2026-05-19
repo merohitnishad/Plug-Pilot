@@ -56,7 +56,7 @@ The project uses a `Makefile` to simplify development workflows.
 - **Config:** Stored via `electron-store` in `~/Library/Application Support/plugpilot/plugpilot-config.json`.
 - **History:** SQLite database in `~/Library/Application Support/PlugPilot/history.db`.
 - **Logs:** Plain text files in `~/Library/Application Support/PlugPilot/logs/`.
-- **Encryption:** Sensitive Alexa cookies are encrypted using Electron's `safeStorage` (macOS Keychain).
+- **Encryption:** Sensitive Alexa cookies are encrypted using internal AES-256-CBC (avoids macOS Keychain prompts).
 
 ## Development Conventions
 
