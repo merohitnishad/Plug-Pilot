@@ -6,7 +6,11 @@
 
 <p align="center"><em>Stop worrying about your MacBook battery. PlugPilot does it for you.</em></p>
 
-Plug in at 20%. Unplug at 80%. That's the sweet spot that keeps lithium batteries healthy for years. The problem? Nobody remembers to do it manually.
+<p align="center">
+  <img src="src/icons/screenshot/application.png" alt="PlugPilot Application Screenshot" />
+</p>
+
+Plug in at 20%. Unplug at 80% (or whatever thresholds you prefer!). That's the sweet spot that keeps lithium batteries healthy for years. The problem? Nobody remembers to do it manually.
 
 PlugPilot sits quietly in your menu bar, watches your battery, and tells your Alexa smart plug exactly when to turn on and off — automatically, every day, without you thinking about it.
 
