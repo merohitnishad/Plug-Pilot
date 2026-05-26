@@ -7,6 +7,11 @@
 <p align="center"><em>Stop worrying about your MacBook battery. PlugPilot does it for you.</em></p>
 
 <p align="center">
+  Find us on Product Hunt: <br />
+  <a href="https://www.producthunt.com/products/plugpilot?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-plugpilot" target="_blank" rel="noopener noreferrer"><img alt="PlugPilot - Keep your MacBook battery healthy automatically | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1154432&amp;theme=light&amp;t=1779778276901"></a>
+</p>
+
+<p align="center">
   <img src="src/icons/screenshot/application.png" alt="PlugPilot Application Screenshot" />
 </p>
 
